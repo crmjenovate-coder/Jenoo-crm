@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { HiAcademicCap, HiBuildingLibrary, HiBookOpen, HiHashtag, HiCurrencyRupee } from 'react-icons/hi2';
 import CourseSearchableSelect from '../CourseSearchableSelect';
 import StateSearchableSelect from '../StateSearchableSelect';
