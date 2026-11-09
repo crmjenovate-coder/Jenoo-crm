@@ -7,11 +7,7 @@ import {
   HiOutlineLockClosed,
   HiArrowRight,
   HiBriefcase,
-  HiUser,
-  HiKey,
-  HiCheckCircle,
-  HiXMark,
-  HiSparkles
+  HiUser
 } from 'react-icons/hi2';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
@@ -24,16 +20,6 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  // Forgot password modal states
-  const [showForgotModal, setShowForgotModal] = useState(false);
-  const [forgotStep, setForgotStep] = useState(1); // 1: Send Code, 2: Verify Code & Reset Pass
-  const [resetEmail, setResetEmail] = useState('');
-  const [resetCode, setResetCode] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [isSendingCode, setIsSendingCode] = useState(false);
-  const [isResettingPass, setIsResettingPass] = useState(false);
-  const [devOtpPreview, setDevOtpPreview] = useState('');
 
   const {
     register,
@@ -81,80 +67,7 @@ export default function LoginPage() {
     }
   };
 
-  // Open Forgot Password Modal (Admin only)
-  const openForgotPassword = () => {
-    const currentEmail = watch('email') || '';
-    setResetEmail(currentEmail);
-    setForgotStep(1);
-    setResetCode('');
-    setNewPassword('');
-    setConfirmPassword('');
-    setDevOtpPreview('');
-    setShowForgotModal(true);
-  };
 
-  // Step 1: Send OTP verification code to Admin email
-  const handleSendCode = async (e) => {
-    e.preventDefault();
-    if (!resetEmail || !resetEmail.includes('@')) {
-      toast.error('Please enter a valid Admin email address');
-      return;
-    }
-
-    setIsSendingCode(true);
-    try {
-      const response = await api.post('/auth/forgot-password', { email: resetEmail });
-      toast.success(response.data.message || 'Verification code sent to your email!');
-      if (response.data.code) {
-        setDevOtpPreview(response.data.code);
-      }
-      setForgotStep(2);
-    } catch (error) {
-      const msg = error.response?.data?.message || 'Failed to send verification code.';
-      toast.error(msg);
-    } finally {
-      setIsSendingCode(false);
-    }
-  };
-
-  // Step 2: Confirm code and change password
-  const handleResetPassword = async (e) => {
-    e.preventDefault();
-    if (!resetCode || resetCode.trim().length !== 6) {
-      toast.error('Please enter the 6-digit verification code sent to your email');
-      return;
-    }
-    if (!newPassword || newPassword.length < 6) {
-      toast.error('New password must be at least 6 characters');
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      toast.error('New passwords do not match');
-      return;
-    }
-
-    setIsResettingPass(true);
-    try {
-      const response = await api.post('/auth/reset-password', {
-        email: resetEmail,
-        code: resetCode,
-        newPassword
-      });
-
-      toast.success(response.data.message || 'Password reset successfully!');
-      
-      // Update login form credentials
-      setValue('email', resetEmail, { shouldValidate: true });
-      setValue('password', newPassword, { shouldValidate: true });
-
-      setShowForgotModal(false);
-    } catch (error) {
-      const msg = error.response?.data?.message || 'Password reset failed. Please check your verification code.';
-      toast.error(msg);
-    } finally {
-      setIsResettingPass(false);
-    }
-  };
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-gradient-to-br from-ocean-950 via-ocean-900 to-ocean-950">
       {/* Decorative blurred background circles */}
@@ -290,22 +203,10 @@ export default function LoginPage() {
 
             {/* Password Field */}
             <div>
-              <div className="flex items-center justify-between mb-1.5">
+              <div className="mb-1.5">
                 <label htmlFor="login-password" className="block text-xs font-semibold text-gray-300 uppercase tracking-wider">
                   Password
                 </label>
-                
-                {/* FORGOT PASSWORD BUTTON - ADMIN ONLY */}
-                {activeRole === 'admin' && (
-                  <button
-                    type="button"
-                    id="btn-forgot-password-admin"
-                    onClick={openForgotPassword}
-                    className="text-xs font-semibold text-ocean-300 hover:text-white flex items-center gap-1 transition-colors hover:underline"
-                  >
-                    <HiKey className="w-3.5 h-3.5" /> Forgot Password?
-                  </button>
-                )}
               </div>
 
               <div className="relative">
@@ -379,154 +280,7 @@ export default function LoginPage() {
         </p>
       </div>
 
-      {/* FORGOT PASSWORD MODAL (ADMIN ONLY) */}
-      {showForgotModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fade-in">
-          <div className="bg-ocean-950 border border-white/20 rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl text-white relative">
-            <button
-              type="button"
-              onClick={() => setShowForgotModal(false)}
-              className="absolute top-4 right-4 p-2 rounded-xl text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
-            >
-              <HiXMark className="w-5 h-5" />
-            </button>
 
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-2xl bg-ocean-500/20 border border-ocean-400/30 flex items-center justify-center text-ocean-300">
-                <HiKey className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold font-heading text-white">Reset Admin Password</h3>
-                <p className="text-xs text-ocean-200/80">Step {forgotStep} of 2: {forgotStep === 1 ? 'Request Code' : 'Confirm & Set Password'}</p>
-              </div>
-            </div>
-
-            {/* STEP 1: REQUEST VERIFICATION CODE */}
-            {forgotStep === 1 && (
-              <form onSubmit={handleSendCode} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-gray-300 mb-1.5">
-                    Registered Admin Email
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    value={resetEmail}
-                    onChange={(e) => setResetEmail(e.target.value)}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/15 rounded-xl text-sm text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-ocean-400/40 focus:border-ocean-300"
-                  />
-                  <p className="text-[11px] text-gray-400 mt-1.5">
-                    A 6-digit verification code will be sent to this admin email address.
-                  </p>
-                </div>
-
-                <div className="flex items-center justify-end gap-3 pt-3">
-                  <button
-                    type="button"
-                    onClick={() => setShowForgotModal(false)}
-                    className="px-4 py-2.5 rounded-xl text-xs font-semibold text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isSendingCode}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-ocean-600 hover:bg-ocean-500 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-ocean-600/30 disabled:opacity-50"
-                  >
-                    {isSendingCode ? 'Sending Code...' : 'Send Verification Code'}
-                  </button>
-                </div>
-              </form>
-            )}
-
-            {/* STEP 2: VERIFY CODE & SET NEW PASSWORD */}
-            {forgotStep === 2 && (
-              <form onSubmit={handleResetPassword} className="space-y-4">
-                {devOtpPreview && (
-                  <div className="p-3 bg-ocean-500/20 border border-ocean-400/40 rounded-xl text-xs text-ocean-200 flex items-center justify-between">
-                    <span className="flex items-center gap-1.5 font-semibold">
-                      <HiSparkles className="w-4 h-4 text-amber-400" /> Dev Verification Code:
-                    </span>
-                    <span className="font-mono font-bold tracking-widest text-white bg-black/40 px-2 py-0.5 rounded border border-white/20">
-                      {devOtpPreview}
-                    </span>
-                  </div>
-                )}
-
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-gray-300 mb-1.5">
-                    6-Digit Verification Code *
-                  </label>
-                  <input
-                    type="text"
-                    maxLength={6}
-                    required
-                    value={resetCode}
-                    onChange={(e) => setResetCode(e.target.value)}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/15 rounded-xl text-center text-lg font-mono tracking-widest text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-ocean-400/40 focus:border-ocean-300"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-gray-300 mb-1.5">
-                    New Password *
-                  </label>
-                  <input
-                    type="password"
-                    required
-                    minLength={6}
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/15 rounded-xl text-sm text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-ocean-400/40 focus:border-ocean-300"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-gray-300 mb-1.5">
-                    Confirm New Password *
-                  </label>
-                  <input
-                    type="password"
-                    required
-                    minLength={6}
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/15 rounded-xl text-sm text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-ocean-400/40 focus:border-ocean-300"
-                  />
-                </div>
-
-                <div className="flex items-center justify-between pt-3">
-                  <button
-                    type="button"
-                    onClick={() => setForgotStep(1)}
-                    className="text-xs font-semibold text-ocean-300 hover:text-white transition-colors"
-                  >
-                    ← Back / Resend Code
-                  </button>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setShowForgotModal(false)}
-                      className="px-3 py-2 rounded-xl text-xs font-semibold text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={isResettingPass}
-                      className="flex items-center gap-1.5 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-emerald-600/30 disabled:opacity-50"
-                    >
-                      <HiCheckCircle className="w-4 h-4" />
-                      {isResettingPass ? 'Updating...' : 'Confirm & Change Password'}
-                    </button>
-                  </div>
-                </div>
-              </form>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
