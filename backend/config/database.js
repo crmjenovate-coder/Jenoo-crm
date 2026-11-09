@@ -14,7 +14,13 @@ if (process.env.NODE_ENV === 'production' && process.env.DB_HOST) {
       dialect: 'mysql',
       logging: false,
       dialectOptions: {
-        connectTimeout: 60000
+        connectTimeout: 60000,
+        ...(process.env.DB_SSL === 'false' ? {} : {
+          ssl: {
+            minVersion: 'TLSv1.2',
+            rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED === 'true'
+          }
+        })
       },
       pool: {
         max: 5,
