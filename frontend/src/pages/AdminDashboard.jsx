@@ -148,18 +148,7 @@ export default function AdminDashboard() {
 
       const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
 
-      const [
-        statsRes,
-        stateRes,
-        courseRes,
-        counselorRes,
-        collegeRes,
-        deptRes,
-        modeRes,
-        monthlyRes,
-        defaultersRes,
-        alertsRes
-      ] = await Promise.all([
+      const results = await Promise.allSettled([
         api.get(`/dashboard/deep-stats${queryString}`),
         api.get(`/dashboard/state-breakdown${queryString}`),
         api.get(`/dashboard/course-breakdown${queryString}`),
@@ -172,6 +161,19 @@ export default function AdminDashboard() {
         api.get('/verification?limit=5&fraud_level=HIGH_RISK')
       ]);
 
+      const [
+        statsRes,
+        stateRes,
+        courseRes,
+        counselorRes,
+        collegeRes,
+        deptRes,
+        modeRes,
+        monthlyRes,
+        defaultersRes,
+        alertsRes
+      ] = results.map(r => r.status === 'fulfilled' ? r.value : { data: {} });
+
       setDeepStats(statsRes.data?.data || null);
       setStateBreakdown(stateRes.data?.data || []);
       setCourseBreakdown(courseRes.data?.data || []);
@@ -182,6 +184,10 @@ export default function AdminDashboard() {
       setMonthlyCollection(monthlyRes.data?.data || []);
       setTopDefaulters(defaultersRes.data?.data || []);
       setRecentAlerts(alertsRes.data?.data?.results || []);
+
+      if (results.every(r => r.status === 'rejected')) {
+        toast.error('Failed to load dashboard analytics.');
+      }
 
     } catch (err) {
       console.error(err);

@@ -6,6 +6,9 @@ const auth = require('../middleware/auth');
 const roleCheck = require('../middleware/roleCheck');
 const { Op, fn, col, literal } = require('sequelize');
 
+const isMySQL = sequelize.getDialect() === 'mysql';
+const getMonthFn = (dateCol) => isMySQL ? fn('DATE_FORMAT', col(dateCol), '%Y-%m') : fn('strftime', '%Y-%m', col(dateCol));
+
 // All routes require admin
 router.use(auth);
 router.use(roleCheck(['admin']));
@@ -172,14 +175,15 @@ router.get('/enrollment-trend', async (req, res, next) => {
     const where = buildStudentFilter(req.query);
     where.created_at = { ...(where.created_at || {}), [Op.gte]: twelveMonthsAgo };
 
+    const monthCol = getMonthFn('created_at');
     const results = await Student.findAll({
       attributes: [
-        [fn('strftime', '%Y-%m', col('created_at')), 'month'],
+        [monthCol, 'month'],
         [fn('COUNT', col('id')), 'count']
       ],
       where,
-      group: [fn('strftime', '%Y-%m', col('created_at'))],
-      order: [[fn('strftime', '%Y-%m', col('created_at')), 'ASC']],
+      group: [monthCol],
+      order: [[monthCol, 'ASC']],
       raw: true
     });
 
@@ -205,14 +209,15 @@ router.get('/revenue', async (req, res, next) => {
     const where = buildStudentFilter(req.query);
     where.created_at = { ...(where.created_at || {}), [Op.gte]: twelveMonthsAgo };
 
+    const monthCol = getMonthFn('created_at');
     const results = await Student.findAll({
       attributes: [
-        [fn('strftime', '%Y-%m', col('created_at')), 'month'],
+        [monthCol, 'month'],
         [fn('SUM', col('amount_received')), 'amount']
       ],
       where,
-      group: [fn('strftime', '%Y-%m', col('created_at'))],
-      order: [[fn('strftime', '%Y-%m', col('created_at')), 'ASC']],
+      group: [monthCol],
+      order: [[monthCol, 'ASC']],
       raw: true
     });
 
@@ -322,17 +327,18 @@ router.get('/fraud-analytics', async (req, res, next) => {
     const twelveMonthsAgo = new Date();
     twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
 
+    const monthCol = getMonthFn('verified_at');
     const monthly = await VerificationResult.findAll({
       attributes: [
-        [fn('strftime', '%Y-%m', col('verified_at')), 'month'],
+        [monthCol, 'month'],
         [fn('COUNT', col('id')), 'count']
       ],
       where: {
         fraud_score: { [Op.gt]: 20 },
         verified_at: { [Op.gte]: twelveMonthsAgo }
       },
-      group: [fn('strftime', '%Y-%m', col('verified_at'))],
-      order: [[fn('strftime', '%Y-%m', col('verified_at')), 'ASC']],
+      group: [monthCol],
+      order: [[monthCol, 'ASC']],
       raw: true
     });
 
@@ -620,16 +626,17 @@ router.get('/monthly-collection', async (req, res, next) => {
     const where = buildStudentFilter(req.query);
     where.created_at = { ...(where.created_at || {}), [Op.gte]: twelveMonthsAgo };
 
+    const monthCol = getMonthFn('created_at');
     const results = await Student.findAll({
       attributes: [
-        [fn('strftime', '%Y-%m', col('created_at')), 'month'],
+        [monthCol, 'month'],
         [fn('SUM', col('amount_received')), 'collected'],
         [fn('SUM', col('pending_amount')), 'pending'],
         [fn('COUNT', col('id')), 'studentCount']
       ],
       where,
-      group: [fn('strftime', '%Y-%m', col('created_at'))],
-      order: [[fn('strftime', '%Y-%m', col('created_at')), 'ASC']],
+      group: [monthCol],
+      order: [[monthCol, 'ASC']],
       raw: true
     });
 
